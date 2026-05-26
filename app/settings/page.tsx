@@ -4,6 +4,7 @@ import { Upload, Trash2, CheckCircle, ExternalLink, Github, Server, Tag, Zap, Ke
 import AppLayout from '@/components/layout/AppLayout'
 import { createClient } from '@/lib/supabase'
 import { getSettings, saveSettings, deleteGscAccount, getProviderCredentials, saveProviderCredentials, deleteCredentials, listBrandProfiles, createBrandProfile, updateBrandProfile, deleteBrandProfile } from '@/lib/api'
+import BrandProfilesCard from '@/components/ui/BrandProfilesCard'
 
 const VERSION = 'v3.0'
 const BACKEND_URL = 'faq-saas-backend-production.up.railway.app'
@@ -46,8 +47,6 @@ export default function SettingsPage() {
         if (data.provider_settings?.has_api_key) {
           setCredsConfigured(true)
           setCredsProvider(data.provider_settings.provider || '')
-        }
-        )
         }
       } catch {}
     }
@@ -114,6 +113,24 @@ export default function SettingsPage() {
   }
 
   
+
+  async function handleSaveCreds() {
+    if (!credsForm.api_key.trim()) { setCredsError('API key is required'); return }
+    const sb = createClient()
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) return
+    setCredsSaving(true)
+    setCredsError('')
+    try {
+      await saveProviderCredentials(session.access_token, credsForm)
+      setCredsConfigured(true)
+      setCredsProvider(credsForm.provider)
+      setShowCredsForm(false)
+      setCredsSaved(true)
+      setTimeout(() => setCredsSaved(false), 2000)
+    } catch { setCredsError('Failed to save credentials') }
+    setCredsSaving(false)
+  }
 
   return (
     <AppLayout>
