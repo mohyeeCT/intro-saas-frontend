@@ -6,11 +6,11 @@ import { createClient } from '@/lib/supabase'
 import { getSettings, saveSettings, deleteGscAccount, getProviderCredentials, saveProviderCredentials, deleteCredentials, listBrandProfiles, createBrandProfile, updateBrandProfile, deleteBrandProfile } from '@/lib/api'
 import BrandProfilesCard from '@/components/ui/BrandProfilesCard'
 
-const VERSION = 'v3.0'
-const BACKEND_URL = 'faq-saas-backend-production.up.railway.app'
-const FRONTEND_URL = 'faq.copypilot.app'
-const BACKEND_REPO = 'https://github.com/mohyeeCT/faq-saas-backend'
-const FRONTEND_REPO = 'https://github.com/mohyeeCT/faq-saas-frontend'
+const VERSION = 'v1.2'
+const BACKEND_URL = 'intro-saas-backend-production.up.railway.app'
+const FRONTEND_URL = 'intro.copypilot.app'
+const BACKEND_REPO = 'https://github.com/mohyeeCT/intro-saas-backend'
+const FRONTEND_REPO = 'https://github.com/mohyeeCT/intro-saas-frontend'
 
 export default function SettingsPage() {
   const [gscConfigured, setGscConfigured] = useState(false)
@@ -280,8 +280,8 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <img src="/favicon-32x32.png" alt="FAQ Production" className="w-6 h-6" />
               <div>
-                <p className="font-semibold text-sm">FAQ Copy Production</p>
-                <p className="text-xs text-muted">AI-powered FAQ generation for SEO teams</p>
+                <p className="font-semibold text-sm">Page Intro Production</p>
+                <p className="text-xs text-muted">AI-powered page intro generation for SEO teams</p>
               </div>
             </div>
             <a
@@ -335,11 +335,11 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <a href={BACKEND_REPO} target="_blank" rel="noreferrer"
                   className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors font-mono">
-                  faq-saas-backend <ExternalLink size={10} />
+                  intro-saas-backend <ExternalLink size={10} />
                 </a>
                 <a href={FRONTEND_REPO} target="_blank" rel="noreferrer"
                   className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors font-mono">
-                  faq-saas-frontend <ExternalLink size={10} />
+                  intro-saas-frontend <ExternalLink size={10} />
                 </a>
               </div>
             </div>
