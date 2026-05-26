@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://intro-saas-backend-production.up.railway.app'
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://intro-saas-backend-production.up.railway.app').replace(/\/+$/, '')
 
 async function apiFetch(path: string, token: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
