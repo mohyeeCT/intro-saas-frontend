@@ -87,3 +87,23 @@ export async function saveTemplate(token: string, name: string, settings: object
 export async function deleteTemplate(token: string, templateId: string) {
   return apiFetch(`/api/settings/templates/${templateId}`, token, { method: 'DELETE' })
 }
+
+export async function listBrandProfiles(token: string) {
+  return apiFetch('/api/settings/brand-profiles', token)
+}
+
+export async function createBrandProfile(token: string, name: string, data: object) {
+  return apiFetch('/api/settings/brand-profiles', token, {
+    method: 'POST', body: JSON.stringify({ name, data }),
+  })
+}
+
+export async function updateBrandProfile(token: string, id: string, name: string, data: object) {
+  return apiFetch(`/api/settings/brand-profiles/${id}`, token, {
+    method: 'PUT', body: JSON.stringify({ name, data }),
+  })
+}
+
+export async function deleteBrandProfile(token: string, id: string) {
+  return apiFetch(`/api/settings/brand-profiles/${id}`, token, { method: 'DELETE' })
+}

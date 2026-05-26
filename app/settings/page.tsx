@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Upload, Trash2, CheckCircle, ExternalLink, Github, Server, Tag, Zap, KeyRound } from 'lucide-react'
 import AppLayout from '@/components/layout/AppLayout'
 import { createClient } from '@/lib/supabase'
-import { getSettings, saveSettings, deleteGscAccount, getProviderCredentials, saveProviderCredentials, deleteCredentials } from '@/lib/api'
+import { getSettings, saveSettings, deleteGscAccount, getProviderCredentials, saveProviderCredentials, deleteCredentials, listBrandProfiles, createBrandProfile, updateBrandProfile, deleteBrandProfile } from '@/lib/api'
 
 const VERSION = 'v3.0'
 const BACKEND_URL = 'faq-saas-backend-production.up.railway.app'
@@ -30,16 +30,7 @@ export default function SettingsPage() {
   const [showCredsForm, setShowCredsForm] = useState(false)
   const [credsForm, setCredsForm] = useState({ provider: 'Claude', api_key: '', dfs_login: '', dfs_password: '', jina_api_key: '', site_url: '' })
 
-  // Brand profile state
-  const [brandForm, setBrandForm] = useState({
-    brand_name: '', brand_voice: '', tone: '', target_audience: '',
-    usps: '', key_messages: '', competitors: '', products_services: '',
-    words_to_avoid: '', example_copy: '',
-  })
-  const [brandSaving, setBrandSaving] = useState(false)
-  const [brandSaved, setBrandSaved] = useState(false)
-  const [brandError, setBrandError] = useState('')
-  const [brandConfigured, setBrandConfigured] = useState(false)
+
 
   useEffect(() => {
     async function load() {
@@ -56,20 +47,7 @@ export default function SettingsPage() {
           setCredsConfigured(true)
           setCredsProvider(data.provider_settings.provider || '')
         }
-        if (data.brand_profile && Object.keys(data.brand_profile).length > 0) {
-          setBrandConfigured(true)
-          setBrandForm({
-            brand_name: data.brand_profile.brand_name || '',
-            brand_voice: data.brand_profile.brand_voice || '',
-            tone: data.brand_profile.tone || '',
-            target_audience: data.brand_profile.target_audience || '',
-            usps: data.brand_profile.usps || '',
-            key_messages: data.brand_profile.key_messages || '',
-            competitors: data.brand_profile.competitors || '',
-            products_services: data.brand_profile.products_services || '',
-            words_to_avoid: data.brand_profile.words_to_avoid || '',
-            example_copy: data.brand_profile.example_copy || '',
-          })
+        )
         }
       } catch {}
     }
@@ -135,38 +113,7 @@ export default function SettingsPage() {
     setCredsDeleting(false)
   }
 
-  async function handleSaveBrand() {
-    const sb = createClient()
-    const { data: { session } } = await sb.auth.getSession()
-    if (!session) return
-    setBrandSaving(true)
-    setBrandError('')
-    try {
-      await saveSettings(session.access_token, { brand_profile: brandForm })
-      setBrandConfigured(true)
-      setBrandSaved(true)
-      setTimeout(() => setBrandSaved(false), 2000)
-    } catch { setBrandError('Failed to save brand profile') }
-    setBrandSaving(false)
-  }
-
-  async function handleSaveCreds() {
-    if (!credsForm.api_key.trim()) { setCredsError('API key is required'); return }
-    const sb = createClient()
-    const { data: { session } } = await sb.auth.getSession()
-    if (!session) return
-    setCredsSaving(true)
-    setCredsError('')
-    try {
-      await saveProviderCredentials(session.access_token, credsForm)
-      setCredsConfigured(true)
-      setCredsProvider(credsForm.provider)
-      setShowCredsForm(false)
-      setCredsSaved(true)
-      setTimeout(() => setCredsSaved(false), 2000)
-    } catch { setCredsError('Failed to save credentials') }
-    setCredsSaving(false)
-  }
+  
 
   return (
     <AppLayout>
@@ -304,99 +251,13 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Brand Profile */}
-        <div className="card p-6 mb-4">
-          <div className="flex items-start gap-4 mb-5">
-            <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-              <span style={{ fontSize: 16 }}>🎯</span>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-semibold text-sm">Brand Profile</h2>
-                  <p className="text-muted text-xs mt-0.5">Applied to every job automatically. The more detail, the better the output quality.</p>
-                </div>
-                {brandConfigured && (
-                  <span className="text-xs text-accent bg-accent/8 border border-accent/20 rounded-full px-2.5 py-1">Configured</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Row 1 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted block mb-1">Brand Name</label>
-                <input value={brandForm.brand_name} onChange={e => setBrandForm(f => ({ ...f, brand_name: e.target.value }))} className="input-base text-xs w-full" placeholder="Acme Corp" />
-              </div>
-              <div>
-                <label className="text-xs text-muted block mb-1">Tone</label>
-                <select value={brandForm.tone} onChange={e => setBrandForm(f => ({ ...f, tone: e.target.value }))} className="input-base text-xs w-full">
-                  <option value="">Select tone</option>
-                  {['Professional', 'Conversational', 'Friendly', 'Authoritative', 'Technical', 'Casual'].map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Row 2 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Brand Voice <span className="text-muted/50">How the brand sounds and feels</span></label>
-              <input value={brandForm.brand_voice} onChange={e => setBrandForm(f => ({ ...f, brand_voice: e.target.value }))} className="input-base text-xs w-full" placeholder="e.g. Expert but approachable. Straight-talking. Never jargon-heavy." />
-            </div>
-
-            {/* Row 3 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Target Audience</label>
-              <input value={brandForm.target_audience} onChange={e => setBrandForm(f => ({ ...f, target_audience: e.target.value }))} className="input-base text-xs w-full" placeholder="e.g. Mid-market B2B procurement managers, 30-50, focus on cost and reliability" />
-            </div>
-
-            {/* Row 4 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Unique Selling Points</label>
-              <textarea rows={2} value={brandForm.usps} onChange={e => setBrandForm(f => ({ ...f, usps: e.target.value }))} className="input-base text-xs w-full resize-none" placeholder="e.g. 2-year guarantee, UK-manufactured, same-day dispatch on orders before 3pm" />
-            </div>
-
-            {/* Row 5 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Key Messages <span className="text-muted/50">Things to reinforce in every piece of copy</span></label>
-              <textarea rows={2} value={brandForm.key_messages} onChange={e => setBrandForm(f => ({ ...f, key_messages: e.target.value }))} className="input-base text-xs w-full resize-none" placeholder="e.g. Industry-leading lead times. No minimum order quantities. ISO 9001 certified." />
-            </div>
-
-            {/* Row 6 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Products / Services</label>
-              <textarea rows={2} value={brandForm.products_services} onChange={e => setBrandForm(f => ({ ...f, products_services: e.target.value }))} className="input-base text-xs w-full resize-none" placeholder="e.g. Industrial dosing systems, granulation equipment, conveyor systems" />
-            </div>
-
-            {/* Row 7 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Competitors <span className="text-muted/50">Differentiate from these</span></label>
-              <input value={brandForm.competitors} onChange={e => setBrandForm(f => ({ ...f, competitors: e.target.value }))} className="input-base text-xs w-full" placeholder="e.g. Acme Rival, GlobalDoser, FastEquip" />
-            </div>
-
-            {/* Row 8 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Words / Phrases to Avoid <span className="text-muted/50">Global — applies to all jobs</span></label>
-              <input value={brandForm.words_to_avoid} onChange={e => setBrandForm(f => ({ ...f, words_to_avoid: e.target.value }))} className="input-base text-xs w-full" placeholder="e.g. cheap, budget, cutting-edge, revolutionary" />
-            </div>
-
-            {/* Row 9 */}
-            <div>
-              <label className="text-xs text-muted block mb-1">Example Copy <span className="text-muted/50">Paste a sample of your best existing copy for style reference</span></label>
-              <textarea rows={4} value={brandForm.example_copy} onChange={e => setBrandForm(f => ({ ...f, example_copy: e.target.value }))} className="input-base text-xs w-full resize-y font-mono" placeholder="Paste an example paragraph of brand copy here..." />
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button onClick={handleSaveBrand} disabled={brandSaving} className="btn-primary text-xs px-4 py-2">
-                {brandSaving ? 'Saving...' : 'Save brand profile'}
-              </button>
-            </div>
-            {brandSaved && <p className="text-accent text-xs flex items-center gap-1.5"><CheckCircle size={11} /> Saved</p>}
-            {brandError && <p className="text-error text-xs">{brandError}</p>}
-          </div>
-        </div>
-
+        {/* Brand Profiles */}
+        <BrandProfilesCard
+          listBrandProfiles={listBrandProfiles}
+          createBrandProfile={createBrandProfile}
+          updateBrandProfile={updateBrandProfile}
+          deleteBrandProfile={deleteBrandProfile}
+        />
         <div className="card overflow-hidden">
           <div className="px-6 py-5 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">

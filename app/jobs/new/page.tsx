@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Papa from 'papaparse'
 import AppLayout from '@/components/layout/AppLayout'
 import { createClient } from '@/lib/supabase'
-import { runJob, getProviderCredentials, listTemplates, saveTemplate, deleteTemplate } from '@/lib/api'
+import { runJob, getProviderCredentials, listTemplates, saveTemplate, deleteTemplate, listBrandProfiles } from '@/lib/api'
 import { Upload, Plus, Trash2, AlertCircle, BookmarkPlus, ChevronDown } from 'lucide-react'
 
 type Row = { url: string; keyword: string; page_type: string; h1: string }
@@ -86,6 +86,8 @@ export default function NewJobPage() {
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [brandProfiles, setBrandProfiles] = useState<{id: string; name: string; data: Record<string, string>}[]>([])
+  const [selectedBrandProfileId, setSelectedBrandProfileId] = useState('')
 
   // AI provider
   const [provider, setProvider] = useState('Claude')
@@ -136,6 +138,10 @@ export default function NewJobPage() {
         if (creds?.brand_name) setBrandName(creds.brand_name)
         const tmpl = await listTemplates(session.access_token, 'intro')
         if (Array.isArray(tmpl)) setTemplates(tmpl)
+
+        // Load brand profiles
+        const bp = await listBrandProfiles(session.access_token)
+        if (Array.isArray(bp)) setBrandProfiles(bp)
       } catch {}
     }
     loadCreds()
@@ -231,7 +237,7 @@ export default function NewJobPage() {
           word_count: wordCount,
           paragraph_count: paragraphCount,
           max_supporting_keywords: maxSupportingKeywords,
-          brand_name: brandName,
+          brand_name: brandName, brand_profile_id: selectedBrandProfileId,
           full_brand_name: fullBrandName,
           include_brand: includeBrand,
           forbidden_phrases: forbiddenPhrases,
@@ -322,7 +328,7 @@ export default function NewJobPage() {
                           provider, business_type: businessType, page_template: pageTemplate,
                           word_count: wordCount, paragraph_count: paragraphCount,
                           max_supporting_keywords: maxSupportingKeywords,
-                          brand_name: brandName, full_brand_name: fullBrandName,
+                          brand_name: brandName, brand_profile_id: selectedBrandProfileId, full_brand_name: fullBrandName,
                           include_brand: includeBrand, forbidden_phrases: forbiddenPhrases,
                           branded_terms_input: brandedTermsInput,
                           use_gsc: useGsc, scrape_pages: scrapePages, site_url: siteUrl,
@@ -532,7 +538,28 @@ export default function NewJobPage() {
                   onChange={e => setMaxSupportingKeywords(+e.target.value)} className="input-base text-xs" />
               </div>
               <div>
-                <label className="text-xs text-muted block mb-1">Brand name</label>
+                {brandProfiles.length > 0 && (
+                  <div className="mb-3">
+                    <label className="text-xs text-muted block mb-1">Brand profile</label>
+                    <select
+                      value={selectedBrandProfileId}
+                      onChange={e => {
+                        setSelectedBrandProfileId(e.target.value)
+                        const profile = brandProfiles.find(p => p.id === e.target.value)
+                        if (profile?.data?.brand_name) setBrandName(profile.data.brand_name)
+                      }}
+                      className="input-base text-xs w-full"
+                    >
+                      <option value="">No profile selected</option>
+                      {brandProfiles.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <label className="text-xs text-muted block mb-1">
+                  Brand name {brandProfiles.length > 0 && <span className="text-muted/50">(auto-filled from profile)</span>}
+                </label>
                 <input value={brandName} onChange={e => setBrandName(e.target.value)}
                   className="input-base text-xs" placeholder="Acme Corp" />
               </div>
