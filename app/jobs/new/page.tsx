@@ -115,6 +115,7 @@ export default function NewJobPage() {
   const [dfsPassword, setDfsPassword] = useState('')
   const [locationCode, setLocationCode] = useState(2840)
   const [minVolume, setMinVolume] = useState(10)
+  const [restrictedIndustry, setRestrictedIndustry] = useState(false)
 
   // Options
   const [scrapePages, setScrapePages] = useState(false)
@@ -246,6 +247,7 @@ export default function NewJobPage() {
           dfs_password: dfsPassword,
           location_code: locationCode,
           min_volume: minVolume,
+          restricted_industry: restrictedIndustry,
           scrape_pages: scrapePages,
           jina_api_key: scrapePages ? jinaKey : '',
           use_gsc: useGsc,
@@ -609,6 +611,14 @@ export default function NewJobPage() {
             {/* Options */}
             <div className="card p-4 space-y-3">
               <h3 className="text-xs text-muted uppercase tracking-wider font-normal">Options</h3>
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="text-xs">Restricted industry</span>
+                  <p className="text-xs text-muted mt-0.5">Score on GSC signals only — for industries where DFS suppresses volume (CBD, guns, adult)</p>
+                </div>
+                <input type="checkbox" checked={restrictedIndustry} onChange={e => setRestrictedIndustry(e.target.checked)}
+                  className="accent-accent shrink-0 ml-3" />
+              </label>
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-xs text-muted">Scrape pages (Jina)</span>
                 <input type="checkbox" checked={scrapePages} onChange={e => setScrapePages(e.target.checked)}
