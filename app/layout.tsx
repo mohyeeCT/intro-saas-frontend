@@ -30,6 +30,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${syne.variable} ${mono.variable}`}>
+      <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('cp-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();` }} />
       <body className="bg-bg text-text font-sans antialiased">{children}</body>
     </html>
   )

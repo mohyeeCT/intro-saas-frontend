@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Plus, Settings, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 import clsx from 'clsx'
 
 const nav = [
@@ -48,10 +49,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-0.5">
+        <ThemeToggle />
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted hover:text-error hover:bg-error/5 transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors w-full"
+          style={{ color: 'var(--muted)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--error)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted)'; }}
         >
           <LogOut size={15} />
           Sign out

@@ -9,16 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: '#0f0f17',
-        surface: '#16161f',
-        border: '#222230',
-        accent: '#00c9a7',
-        'accent-dim': '#00c9a720',
-        text: '#e2e2ee',
-        muted: '#5a5a72',
-        error: '#ff4d6d',
-        warning: '#ffb347',
-        success: '#00c9a7',
+        bg:       'var(--bg)',
+        surface:  'var(--surface)',
+        border:   'var(--border)',
+        text:     'var(--text)',
+        muted:    'var(--muted)',
+        accent:   'var(--accent)',
+        error:    'var(--error)',
+        warning:  'var(--warning)',
+        success:  'var(--success)',
       },
       fontFamily: {
         sans: ['var(--font-syne)', 'sans-serif'],
