@@ -215,8 +215,8 @@ export default function JobPage() {
 
         {/* Progress bar */}
         {(job.status === 'running' || job.status === 'cancelling') && (
-          <div className="mb-6 grid grid-cols-5 gap-4">
-            <div className="col-span-2">
+          <div className="mb-6 flex flex-col md:grid md:grid-cols-5 gap-4">
+            <div className="md:col-span-2">
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
                 <div className="h-full bg-accent rounded-full transition-all duration-500"
                   style={{ width: `${progress}%` }} />
@@ -228,7 +228,7 @@ export default function JobPage() {
                 <p className="text-xs text-muted font-mono">{Math.round(progress)}%</p>
               </div>
             </div>
-            <div className="col-span-3 card p-3 font-mono text-xs overflow-y-auto" style={{ maxHeight: 200 }}>
+            <div className="md:col-span-3 card p-3 font-mono text-xs overflow-y-auto" style={{ maxHeight: 180 }}>
               {((job as unknown as {logs?: {ts: string; msg: string}[]}).logs || []).length === 0 ? (
                 <p className="text-muted">Waiting for first update...</p>
               ) : (

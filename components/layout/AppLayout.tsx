@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Sidebar from '@/components/layout/Sidebar'
+import { Menu } from 'lucide-react'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const sb = createClient()
@@ -24,8 +26,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-20 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+      <div className={`
+        fixed top-0 left-0 h-full z-30 transition-transform duration-200
+        md:static md:translate-x-0 md:z-auto md:flex md:flex-shrink-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border md:hidden bg-surface">
+          <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-text transition-colors">
+            <Menu size={20} />
+          </button>
+          <span className="font-semibold text-sm">Page Intro</span>
+        </div>
+        <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
+      </div>
     </div>
   )
 }

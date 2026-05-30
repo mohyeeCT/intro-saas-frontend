@@ -12,7 +12,7 @@ const nav = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void } = {}) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -36,6 +36,7 @@ export default function Sidebar() {
           <Link
             key={href}
             href={href}
+            onClick={onClose}
             className={clsx(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
               pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
