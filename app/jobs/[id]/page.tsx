@@ -48,6 +48,7 @@ export default function JobPage() {
   const [copied, setCopied] = useState<string | null>(null)
   const [view, setView] = useState<'cards' | 'table'>('cards')
   const [rerunning, setRerunning] = useState<number | null>(null)
+  const [newlyUpdated, setNewlyUpdated] = useState<Set<number>>(new Set())
   const [keywordOverrides, setKeywordOverrides] = useState<Record<number, string>>({})
   const [editingKeyword, setEditingKeyword] = useState<number | null>(null)
   const [edits, setEdits] = useState<Record<number, string>>({})
@@ -75,6 +76,23 @@ export default function JobPage() {
     navigator.clipboard.writeText(text)
     setCopied(key)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+
+  const markUpdated = (indices: number[], results: RowResult[]) => {
+    const successful = indices.filter(i => {
+      const r = results[i]
+      return r && !r.error && r.intro_copy && r.intro_copy.length > 0
+    })
+    if (!successful.length) return
+    setNewlyUpdated(prev => new Set([...Array.from(prev), ...successful]))
+    setTimeout(() => {
+      setNewlyUpdated(prev => {
+        const next = new Set(prev)
+        successful.forEach(i => next.delete(i))
+        return next
+      })
+    }, 8000)
   }
 
   async function handleCancel() {
@@ -163,7 +181,10 @@ export default function JobPage() {
                       const sb = createClient()
                       const { data: { session } } = await sb.auth.getSession()
                       if (session) {
-                        await rerunRows(session.access_token, job.id, Array.from(selectedRows))
+                        const indices = Array.from(selectedRows)
+                        await rerunRows(session.access_token, job.id, indices)
+                        const refreshed = await getJob(session.access_token, job.id)
+                        markUpdated(indices, refreshed.results || [])
                         setSelectedRows(new Set())
                         load()
                       }
@@ -327,10 +348,10 @@ export default function JobPage() {
             ) : (
               <div className="space-y-3">
                 {job.results.map((row, i) => (
-                  <div key={i} className={`card overflow-hidden ${selectedRows.has(i) ? 'ring-1 ring-accent/30' : ''}`}>
+                  <div key={i} className={`card overflow-hidden ${selectedRows.has(i) ? 'ring-1 ring-accent/30' : ''} ${newlyUpdated.has(i) ? 'row-flash' : ''}`}>
                     {/* Row header */}
                     <button
-                      onClick={() => setExpanded(expanded === i ? null : i)}
+                      onClick={() => { setExpanded(expanded === i ? null : i); setNewlyUpdated(prev => { const n = new Set(prev); n.delete(i); return n }) }}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface/50 transition-colors text-left">
                       <div className="flex items-center gap-3 min-w-0">
                         <input
@@ -353,6 +374,12 @@ export default function JobPage() {
                       <div className="flex items-center gap-2 shrink-0">
                         {row.word_count != null && (
                           <span className="text-xs text-muted font-mono">{row.word_count}w</span>
+                        )}
+                        {newlyUpdated.has(i) && (
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                            style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                            ✓ new
+                          </span>
                         )}
                         <Badge label={row.cluster_source || ''} />
                         <Badge label={row.error ? 'error' : (row.status || 'ok')} />
