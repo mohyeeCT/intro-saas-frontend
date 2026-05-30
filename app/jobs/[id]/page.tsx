@@ -1,11 +1,11 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Copy, Download, ArrowLeft, RefreshCw, Pencil, X } from 'lucide-react'
 import AppLayout from '@/components/layout/AppLayout'
 import Badge from '@/components/ui/Badge'
 import { createClient } from '@/lib/supabase'
-import { getJob, rerunRow } from '@/lib/api'
+import { getJob, rerunRow, cancelJob, rerunRows } from '@/lib/api'
+import { Copy, Download, ArrowLeft, RefreshCw, Pencil, X, Square, ChevronDown, ChevronUp } from 'lucide-react'
 
 type RowResult = {
   url: string
@@ -40,6 +40,10 @@ export default function JobPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [job, setJob] = useState<Job | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
+  const [rerunningMulti, setRerunningMulti] = useState(false)
+  const [logsCollapsed, setLogsCollapsed] = useState(false)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [view, setView] = useState<'cards' | 'table'>('cards')
@@ -71,6 +75,17 @@ export default function JobPage() {
     navigator.clipboard.writeText(text)
     setCopied(key)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  async function handleCancel() {
+    if (!job) return
+    setCancelling(true)
+    try {
+      const sb = createClient()
+      const { data: { session } } = await sb.auth.getSession()
+      if (session) await cancelJob(session.access_token, job.id)
+    } catch {}
+    setCancelling(false)
   }
 
   function downloadCsv() {
@@ -139,7 +154,48 @@ export default function JobPage() {
           </div>
 
           {job.status === 'complete' && job.results?.length > 0 && (
-            <div className="flex items-center gap-2">
+            <>
+              {selectedRows.size > 0 && (
+                <button
+                  onClick={async () => {
+                    setRerunningMulti(true)
+                    try {
+                      const sb = createClient()
+                      const { data: { session } } = await sb.auth.getSession()
+                      if (session) {
+                        await rerunRows(session.access_token, job.id, Array.from(selectedRows))
+                        setSelectedRows(new Set())
+                        load()
+                      }
+                    } catch {}
+                    setRerunningMulti(false)
+                  }}
+                  disabled={rerunningMulti}
+                  className="btn-primary flex items-center gap-2 text-sm"
+                >
+                  <RefreshCw size={13} className={rerunningMulti ? 'animate-spin' : ''} />
+                  {rerunningMulti ? 'Starting...' : `Re-run ${selectedRows.size} row${selectedRows.size !== 1 ? 's' : ''}`}
+                </button>
+              )}
+              {selectedRows.size === 0 && job.results.some(r => r.status === 'error' || r.error) && (
+                <button
+                  onClick={() => setSelectedRows(new Set(
+                    job.results.map((r, i) => r.status === 'error' || r.error ? i : -1).filter(i => i >= 0)
+                  ))}
+                  className="btn-ghost flex items-center gap-2 text-xs"
+                >
+                  Select all failed
+                </button>
+              )}
+              <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="accent-[var(--accent)]"
+                  checked={selectedRows.size === job.results.length && job.results.length > 0}
+                  onChange={e => setSelectedRows(e.target.checked ? new Set(job.results.map((_, i) => i)) : new Set())}
+                />
+                {selectedRows.size > 0 ? `${selectedRows.size} selected` : 'Select all'}
+              </label>
               <div className="flex items-center bg-border/40 rounded-lg p-0.5">
                 <button onClick={() => setView('cards')}
                   className={`text-xs px-3 py-1.5 rounded-md transition-colors ${view === 'cards' ? 'bg-surface text-text' : 'text-muted hover:text-text'}`}>
@@ -153,20 +209,84 @@ export default function JobPage() {
               <button onClick={downloadCsv} className="btn-secondary text-xs flex items-center gap-1.5">
                 <Download size={12} /> Export CSV
               </button>
-            </div>
+            </>
           )}
         </div>
 
         {/* Progress bar */}
-        {job.status === 'running' && (
-          <div className="mb-6 space-y-2">
-            <div className="h-1.5 bg-border rounded-full overflow-hidden">
-              <div className="h-full bg-accent rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }} />
+        {(job.status === 'running' || job.status === 'cancelling') && (
+          <div className="mb-6 grid grid-cols-5 gap-4">
+            <div className="col-span-2">
+              <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                <div className="h-full bg-accent rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }} />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-accent font-mono animate-pulse">
+                  {job.current_step || 'Processing...'}
+                </p>
+                <p className="text-xs text-muted font-mono">{Math.round(progress)}%</p>
+              </div>
             </div>
-            <p className="text-xs text-muted font-mono">{job.current_step || 'Processing...'}</p>
+            <div className="col-span-3 card p-3 font-mono text-xs overflow-y-auto" style={{ maxHeight: 200 }}>
+              {((job as unknown as {logs?: {ts: string; msg: string}[]}).logs || []).length === 0 ? (
+                <p className="text-muted">Waiting for first update...</p>
+              ) : (
+                ((job as unknown as {logs?: {ts: string; msg: string}[]}).logs || []).map((entry, i) => {
+                  const elapsed = Math.round((new Date(entry.ts).getTime() - new Date((job as unknown as {logs?: {ts: string; msg: string}[]}).logs![0].ts).getTime()) / 1000)
+                  return (
+                    <div key={i} className="flex gap-2 py-0.5 border-b border-border/30 last:border-0">
+                      <span className="text-muted shrink-0" style={{ minWidth: 36 }}>+{elapsed}s</span>
+                      <span className="text-text">{entry.msg}</span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         )}
+
+        {/* Stop job button */}
+        {(job.status === 'running' || job.status === 'cancelling') && (
+          <div className="mb-4">
+            <button
+              onClick={handleCancel}
+              disabled={cancelling || job.status === 'cancelling'}
+              className="flex items-center gap-2 text-xs border border-error/30 text-error bg-error/8 hover:bg-error/15 transition-colors rounded-lg px-3 py-2 disabled:opacity-50"
+            >
+              <Square size={12} fill="currentColor" />
+              {job.status === 'cancelling' ? 'Stopping...' : cancelling ? 'Stopping...' : 'Stop job'}
+            </button>
+          </div>
+        )}
+
+        {/* Collapsible log after completion */}
+        {job.status === 'complete' && (job as unknown as {logs?: {ts: string; msg: string}[]}).logs?.length ? (
+          <div className="mb-6">
+            <button
+              onClick={() => setLogsCollapsed(!logsCollapsed)}
+              className="flex items-center gap-2 text-xs text-muted hover:text-text transition-colors mb-2"
+            >
+              {logsCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+              {logsCollapsed ? 'Show run log' : 'Hide run log'}
+              <span className="text-muted/50">({((job as unknown as {logs?: {ts: string; msg: string}[]}).logs || []).length} steps)</span>
+            </button>
+            {!logsCollapsed && (
+              <div className="card p-3 font-mono text-xs overflow-y-auto" style={{ maxHeight: 200 }}>
+                {((job as unknown as {logs?: {ts: string; msg: string}[]}).logs || []).map((entry, i) => {
+                  const logs = (job as unknown as {logs?: {ts: string; msg: string}[]}).logs!
+                  const elapsed = Math.round((new Date(entry.ts).getTime() - new Date(logs[0].ts).getTime()) / 1000)
+                  return (
+                    <div key={i} className="flex gap-2 py-0.5 border-b border-border/30 last:border-0">
+                      <span className="text-muted shrink-0" style={{ minWidth: 36 }}>+{elapsed}s</span>
+                      <span className="text-muted">{entry.msg}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {job.error && (
           <div className="text-error text-sm bg-error/10 border border-error/20 rounded-lg px-4 py-3 mb-4">
@@ -207,12 +327,23 @@ export default function JobPage() {
             ) : (
               <div className="space-y-3">
                 {job.results.map((row, i) => (
-                  <div key={i} className="card overflow-hidden">
+                  <div key={i} className={`card overflow-hidden ${selectedRows.has(i) ? 'ring-1 ring-accent/30' : ''}`}>
                     {/* Row header */}
                     <button
                       onClick={() => setExpanded(expanded === i ? null : i)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface/50 transition-colors text-left">
                       <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          className="accent-[var(--accent)] shrink-0"
+                          checked={selectedRows.has(i)}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => setSelectedRows(prev => {
+                            const next = new Set(prev)
+                            e.target.checked ? next.add(i) : next.delete(i)
+                            return next
+                          })}
+                        />
                         <span className="text-xs font-mono text-muted shrink-0">{i + 1}</span>
                         <span className="text-xs font-mono text-muted truncate">{row.url}</span>
                         {row.primary_keyword && (

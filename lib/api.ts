@@ -107,3 +107,14 @@ export async function updateBrandProfile(token: string, id: string, name: string
 export async function deleteBrandProfile(token: string, id: string) {
   return apiFetch(`/api/settings/brand-profiles/${id}`, token, { method: 'DELETE' })
 }
+
+export async function cancelJob(token: string, jobId: string) {
+  return apiFetch(`/api/jobs/${jobId}/cancel`, token, { method: 'POST' })
+}
+
+export async function rerunRows(token: string, jobId: string, rowIndices: number[]) {
+  return apiFetch(`/api/jobs/${jobId}/rerun-rows`, token, {
+    method: 'POST',
+    body: JSON.stringify({ row_indices: rowIndices }),
+  })
+}
